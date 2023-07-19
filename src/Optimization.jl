@@ -638,7 +638,7 @@ function surrogate_optimize(obj::Function, ::EI, lb, ub, krig,
         end
         # if the EI is less than some tolerance times the difference between the maximum and minimum points
         # in the surrogate, then we terminate the optimizer.
-        if new_EI_max < 1e-6 * norm(maximum(krig.y) - minimum(krig.y))
+        if new_EI_max < 1e-9 * norm(maximum(krig.y) - minimum(krig.y))
             index = argmin(krig.y)
             println("Termination tolerance reached.")
             return (krig.x[index], krig.y[index])
