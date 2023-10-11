@@ -88,12 +88,13 @@ function surrogate_optimize(obj::Function, ::SRBF, lb, ub, surr::AbstractSurroga
     failures = 0
     dtol = 1e-3 * norm(ub - lb)
     d = length(surr.x)
+    added_y_vals = []
     num_of_iterations = 0
     for w in Iterators.cycle(w_range)
         num_of_iterations += 1
         if num_of_iterations == maxiters
             index = argmin(surr.y)
-            return (surr.x[index], surr.y[index])
+            return (surr.x[index], surr.y[index], added_y_vals)
         end
         for k in 1:maxiters
             incumbent_value = minimum(surr.y)
@@ -165,7 +166,7 @@ function surrogate_optimize(obj::Function, ::SRBF, lb, ub, surr::AbstractSurroga
                     if length(new_sample) == 0
                         println("Out of sampling points")
                         index = argmin(surr.y)
-                        return (surr.x[index], surr.y[index])
+                        return (surr.x[index], surr.y[index], added_y_vals)
                     end
                 else
                     new_addition = true
@@ -178,6 +179,7 @@ function surrogate_optimize(obj::Function, ::SRBF, lb, ub, surr::AbstractSurroga
 
             #5) Update surrogate with (adaptive_point,objective(adaptive_point)
             add_point!(surr, adaptive_point_x, adaptive_point_y)
+            push!(added_y_vals, adaptive_point_y)
 
             #6) How to go on?
             if surr(adaptive_point_x) < incumbent_value
@@ -205,7 +207,7 @@ function surrogate_optimize(obj::Function, ::SRBF, lb, ub, surr::AbstractSurroga
                 if scale > 0.8 * norm(ub - lb)
                     println("Exiting, scale too big")
                     index = argmin(surr.y)
-                    return (surr.x[index], surr.y[index])
+                    return (surr.x[index], surr.y[index], added_y_vals)
                 end
                 success = 0
                 failure = 0
@@ -213,11 +215,11 @@ function surrogate_optimize(obj::Function, ::SRBF, lb, ub, surr::AbstractSurroga
 
             if failure == 5
                 scale = scale / 2
-                #check bounds and go on only if > 1e-5*interval
-                if scale < 1e-5
+                #check bounds and go on only if > 1e-7*interval
+                if scale < 1e-7 * norm(ub - lb)
                     println("Exiting, too narrow")
                     index = argmin(surr.y)
-                    return (surr.x[index], surr.y[index])
+                    return (surr.x[index], surr.y[index], added_y_vals)
                 end
                 success = 0
                 failure = 0
@@ -289,7 +291,7 @@ function surrogate_optimize(obj::Function, ::SRBF, lb::Number, ub::Number,
             #3) Evaluate merit function at the sampled points
             evaluation_of_merit_function = merit_function.(new_sample, w, surr, s_max,
                                                            s_min, d_max, d_min, box_size)
-
+            push!(merit_vals, evaluation_of_merit_function)
             new_addition = false
             adaptive_point_x = zero(eltype(new_sample[1]))
             while new_addition == false
@@ -356,8 +358,8 @@ function surrogate_optimize(obj::Function, ::SRBF, lb::Number, ub::Number,
 
             if failure == 5
                 scale = scale / 2
-                #check bounds and go on only if > 1e-5*interval
-                if scale < 1e-5
+                #check bounds and go on only if > 1e-7*interval
+                if scale < 1e-7 * norm(ub - lb)
                     println("Exiting, too narrow")
                     index = argmin(surr.y)
                     return (surr.x[index], surr.y[index])
